@@ -12,6 +12,7 @@ from .util import split_message
 from .tags import Tags
 from .emote import emotes, Emote
 from .config import cfg
+from .util import strip_twitch_command_prefix
 
 if TYPE_CHECKING:
     from .irc import Irc
@@ -237,12 +238,19 @@ class Message:
             return self.author
         return ''
 
-    async def reply(self, msg: str = '', whisper=False):
+    async def send_command(self, msg: str = '', whisper=False):
+        msg = f'/{strip_twitch_command_prefix(msg)}'
+        await self.reply(msg=msg, whisper=whisper, strip_command_prefix=False)
+
+    async def reply(self, msg: str = '', whisper=False, strip_command_prefix: bool = True):
         if not msg:
             raise ValueError('msg is empty, msg must be a non-empty string')
 
         if not isinstance(msg, str):
             msg = str(msg)
+
+        if strip_command_prefix:
+            msg = strip_twitch_command_prefix(msg)
 
         if self.type is MessageType.PRIVMSG and (not whisper or cfg.disable_whispers):
             await self.channel.send_message(msg)
@@ -253,7 +261,7 @@ class Message:
 
             await self.irc.send_whisper(self.author, msg)
 
-        # used for weirder cases like NOTICE, and point redeemation, ect
+        # used for weirder cases like NOTICE, and point redemption, ect
         # exclude PRIVMSG and WHISPER since they are handled above as well
         elif self.type not in (MessageType.PRIVMSG, MessageType.WHISPER):
             # check we have a valid channel to send to
