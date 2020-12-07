@@ -1,84 +1,58 @@
 from asyncio import Task
 
-from sqlalchemy import Column, Integer, String, Float, Boolean
 
-from .session import Base, init_tables
+from .session import init_tables
 from ..config import cfg
 from ..enums import CommandContext
 
-__all__ = ('Quote', 'CustomCommand', 'Balance', 'CurrencyName', 'MessageTimer')
+from .base_models import Quote as BaseQuote
+from .base_models import CustomCommand as BaseCustomCommand
+from .base_models import Balance as BaseBalance
+from .base_models import CurrencyName as BaseCurrencyName
+from .base_models import MessageTimer as BaseMessageTimer
+
+__all__ = ("Quote", "CustomCommand", "Balance", "CurrencyName", "MessageTimer")
 
 
-class Quote(Base):
-    __tablename__ = 'quotes'
-
-    id = Column(Integer, primary_key=True, nullable=False)
-    user = Column(String(255))
-    channel = Column(String(255), nullable=False)
-    alias = Column(String(255))
-    value = Column(String(255), nullable=False)
-
+class Quote(BaseQuote):
     @classmethod
     def create(cls, channel: str, value: str, user: str = None, alias: str = None):
         return Quote(channel=channel.lower(), user=user, value=value, alias=alias)
 
 
-class CustomCommand(Base):
-    __tablename__ = 'commands'
+class CustomCommand(BaseCustomCommand):
 
-    id = Column(Integer, primary_key=True, nullable=False)
-    name = Column(String(255), nullable=False)
-    channel = Column(String(255), nullable=False)
-    response = Column(String(255), nullable=False)
     context = CommandContext.CHANNEL
     permission = None
 
     @classmethod
     def create(cls, channel: str, name: str, response: str):
-        return CustomCommand(channel=channel.lower(), name=name.lower(), response=response)
+        return CustomCommand(
+            channel=channel.lower(), name=name.lower(), response=response
+        )
 
     @property
     def fullname(self):
         return self.name
 
     def __str__(self):
-        return f'<CustomCommand channel={self.channel!r} name={self.name!r} response={self.response!r}>'
+        return f"<CustomCommand channel={self.channel!r} name={self.name!r} response={self.response!r}>"
 
 
-class Balance(Base):
-    __tablename__ = 'balance'
-
-    id = Column(Integer, nullable=False, primary_key=True)
-    channel = Column(String(255), nullable=False)
-    user = Column(String(255), nullable=False)
-    balance = Column(Integer, nullable=False)
-
+class Balance(BaseBalance):
     @classmethod
     def create(cls, channel: str, user: str, balance: int = cfg.default_balance):
         return Balance(channel=channel.lower(), user=user, balance=balance)
 
 
-class CurrencyName(Base):
-    __tablename__ = 'currency_names'
-
-    id = Column(Integer, nullable=False, primary_key=True)
-    channel = Column(String(255), nullable=False)
-    name = Column(String(255), nullable=False)
-
+class CurrencyName(BaseCurrencyName):
     @classmethod
     def create(cls, channel: str, name: str):
         return CurrencyName(channel=channel.lower(), name=name)
 
 
-class MessageTimer(Base):
-    __tablename__ = 'message_timers'
+class MessageTimer(BaseMessageTimer):
 
-    id = Column(Integer, nullable=False, primary_key=True)
-    name = Column(String(255), nullable=False)
-    channel = Column(String(255), nullable=False)
-    message = Column(String(255), nullable=False)
-    interval = Column(Float, nullable=False)
-    active = Column(Boolean, nullable=False, default=False)
     task: Task = None
 
     @property
@@ -86,8 +60,16 @@ class MessageTimer(Base):
         return self.task is not None and not self.task.done()
 
     @classmethod
-    def create(cls, channel: str, name: str, message: str, interval: float, active=False):
-        return MessageTimer(name=name, channel=channel, message=message, interval=interval, active=active)
+    def create(
+        cls, channel: str, name: str, message: str, interval: float, active=False
+    ):
+        return MessageTimer(
+            name=name,
+            channel=channel,
+            message=message,
+            interval=interval,
+            active=active,
+        )
 
 
 init_tables()
